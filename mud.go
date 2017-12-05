@@ -23,10 +23,6 @@ const (
 	South
 	East
 	West
-	NorthEast
-	NorthWest
-	SouthEast
-	SouthWest
 	Up
 	Down
 )
