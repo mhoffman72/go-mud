@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v1"
 )
 
 //!+gameloop
@@ -33,16 +32,15 @@ type Character struct {
 	RemoteAddr string
 }
 type Exit struct {
-	Look        string `yaml:look"`
-	Flags       string `yaml:"flags"`
-	Destination int    `yaml:"destination"`
+	Look        string `json:"look"`
+	Flags       string `json:"flags"`
+	Destination int    `json:"destination"`
 }
 type Room struct {
-	//	Num         int                `yaml:"num"`
-	Name        string        `yaml:"name"`
-	Description string        `yaml:"description"`
-	Flags       string        `yaml:"flags"`
-	Exits       map[int]*Exit `yaml:"exits"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Flags       string        `json:"flags"`
+	Exits       map[int]*Exit `json:"exits"`
 }
 
 var (
@@ -332,15 +330,16 @@ func buildWorld() (map[int]*Room, error) {
 	*/
 	world := make(map[int]*Room)
 
-	yamlFile, err := ioutil.ReadFile("./world.yaml")
+	worldFile, err := ioutil.ReadFile("./world.json")
 
 	//n := bytes.Index(yamlFile, []byte{0})
 	//log.Printf(string(yamlFile[:n]))
 
 	if err != nil {
-		log.Printf("yamlFile.Get err   #%v ", err)
+		log.Printf("worldFile.Get err   #%v ", err)
 	}
-	err = yaml.Unmarshal(yamlFile, world)
+	//	err = yaml.Unmarshal(yamlFile, world)
+	err = json.Unmarshal(worldFile, &world)
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
