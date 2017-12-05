@@ -1,0 +1,53 @@
+#3000
+The Reading Room~
+   You are in a small, simple room which is mostly empty, save a few
+wooden desks and benches.  To the east you hear the bustle of the Temple
+of Midgaard, a sharp contrast to the relative quiet of this peaceful
+room.
+~
+30 cdeh 0
+D1
+You see the Temple of Midgaard.
+~
+~
+0 -1 3001
+S
+#3001
+The Temple Of Midgaard~
+   You are in the southern end of the temple hall in the Temple of Midgaard.
+The temple has been constructed from giant marble blocks, eternal in
+appearance, and most of the walls are covered by ancient wall paintings
+picturing Gods, Giants and peasants.
+   Large steps lead down through the grand temple gate, descending the huge
+mound upon which the temple is built and ends on the temple square below.
+To the west, you see the Reading Room.  The donation room is in a small
+alcove to your east.
+~
+30 cdeh 0
+D0
+At the northern end of the temple hall is a statue and a huge altar.
+~
+~
+0 -1 3054
+D1
+In the east, you see a small alcove with a rickety wooden sign which
+reads "Midgaard Donation Room."
+~
+~
+0 -1 3063
+D2
+You look down the huge stone steps at the temple square below.
+~
+~
+0 -1 3005
+D3
+You see the Reading Room.
+~
+~
+0 -1 3000
+D5
+You see the temple square.
+~
+~
+0 -1 3005
+S
