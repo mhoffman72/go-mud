@@ -206,7 +206,7 @@ func readFile(path string) (string, error) {
 }
 
 func buildWorld() (map[int]*Room, error) {
-	strWorld, err := readFile("/Users/michaelhoffman/dev/src/go/mud/world.wld")
+	strWorld, err := readFile("./world.wld")
 
 	if err != nil {
 		fmt.Println("Error loading world file: " + err.Error())
