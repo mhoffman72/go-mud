@@ -31,6 +31,8 @@ const (
 	NorthWest
 	SouthEast
 	SouthWest
+	Up
+	Down
 )
 
 type Character struct {
@@ -43,7 +45,7 @@ type Room struct {
 	Name		string
 	Num		int
 	Description	string
-	Exits		[8]int // n, s, e, w, ne, nw, se, sw
+	Exits		[10]int // n, s, e, w, ne, nw, se, sw, u, d
 }
 
 var (
