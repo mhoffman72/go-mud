@@ -1,10 +1,3 @@
-// Copyright © 2016 Alan A. A. Donovan & Brian W. Kernighan.
-// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
-// See page 254.
-//!+
-
-// Chat is a server that lets clients chat with each other.
 package main
 
 import (
@@ -16,12 +9,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v1"
 )
 
 //!+gameloop
 type client chan<- string // an outgoing message channel
 
 type Direction int
+
 const (
 	North Direction = iota
 	South
@@ -36,16 +32,21 @@ const (
 )
 
 type Character struct {
-	Name		string
-	Room		int
-	RemoteAddr	string
+	Name       string
+	Room       int
+	RemoteAddr string
 }
-
+type Exit struct {
+	Look        string `yaml:look"`
+	Flags       string `yaml:"flags"`
+	Destination int    `yaml:"destination"`
+}
 type Room struct {
-	Name		string
-	Num		int
-	Description	string
-	Exits		[10]int // n, s, e, w, ne, nw, se, sw, u, d
+	//	Num         int                `yaml:"num"`
+	Name        string        `yaml:"name"`
+	Description string        `yaml:"description"`
+	Flags       string        `yaml:"flags"`
+	Exits       map[int]*Exit `yaml:"exits"`
 }
 
 var (
@@ -56,7 +57,7 @@ var (
 
 func gameloop() {
 	clients := make(map[client]bool) // all connected clients
-//	players := make(map[client]*Character) // all connected clients
+	//	players := make(map[client]*Character) // all connected clients
 	for {
 		select {
 		case msg := <-messages:
@@ -84,8 +85,8 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 	go clientWriter(conn, ch)
 
 	who := conn.RemoteAddr().String()
-	ch <- "Welcome to goMud!\n\nLogin: " 
-//	messages <- "New connection from " + who
+	ch <- "\nWelcome to goMud!\n\nLogin: "
+	//	messages <- "New connection from " + who
 	entering <- ch
 
 	input := bufio.NewScanner(conn)
@@ -93,27 +94,27 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 	input.Scan()
 	username := input.Text()
 
-	ch <- "Password: " 
+	ch <- "Password: "
 	input.Scan()
 	password := input.Text()
- 		
+
 	var player Character
 	player.Name = username
 	player.Room = 3001
 	player.RemoteAddr = who
 
-	ch <- "Welcome back " + player.Name + " (password: " + password + ")\n" 
-//	entering <- &player
+	ch <- "Welcome back " + player.Name + " (password: " + password + ")\n\n"
+	//	entering <- &player
 
-	messages <- player.Name + " has entered the game.\n"
+	//messages <- player.Name + " has entered the game.\n"
 
 	msg := ""
 	done := false
 	cmd := ""
 
-	ch <- world[player.Room].Name + "\n" + world[player.Room].Description + "\n" + "> "
+	ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n> "
 
-//	input := bufio.NewScanner(conn)
+	//	input := bufio.NewScanner(conn)
 	for input.Scan() {
 
 		//fmt.Println("Input = " + input.Text())
@@ -123,43 +124,129 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 		} else {
 			cmd = input.Text()
 		}
+
+		var buf string
+
 		//fmt.Println("Command = " + cmd)
 		switch cmd {
 		case "bye":
 			msg = "Goodbye, " + player.Name + "!\n"
 			done = true
 		case "l":
+			fallthrough
 		case "look":
-			ch <- world[player.Room].Name + "\n" + world[player.Room].Description + "\n" + "> "
+			ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n"
+		case "exits":
+			for k, v := range world[player.Room].Exits {
+				switch k {
+				case 0:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "North: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "North: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				case 1:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "East: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "East: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				case 2:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "South: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "South: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				case 3:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "West: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "West: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				case 4:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "Up: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "Up: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				case 5:
+					_, ok := world[v.Destination]
+					if ok {
+						buf += "Down: " + world[v.Destination].Name + "\n"
+					} else {
+						buf += "Down: " + strconv.Itoa(v.Destination) + "\n"
+					}
+				}
+			}
+			ch <- buf
+		case "n":
+			_, ok := world[player.Room].Exits[0]
+			if ok {
+				_, ok = world[world[player.Room].Exits[0].Destination]
+				if ok {
+					player.Room = world[player.Room].Exits[0].Destination
+				} else {
+					ch <- "\n***Room not defined in world***\n\n"
+				}
+				ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n"
+			} else {
+				ch <- "You can't go that way\n"
+			}
 		case "e":
-			if world[player.Room].Exits[East] != 0 {
-				player.Room = world[player.Room].Exits[East]
-				ch <- world[player.Room].Name + "\n"
+			_, ok := world[player.Room].Exits[1]
+			if ok {
+				_, ok = world[world[player.Room].Exits[1].Destination]
+				if ok {
+					player.Room = world[player.Room].Exits[1].Destination
+				} else {
+					ch <- "\n***Room not defined in world***\n\n"
+				}
+				ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n"
 			} else {
-				ch <- "You can't go that way\n> "
+				ch <- "You can't go that way\n"
 			}
-//			player.Room++
-//			msg = "You are in room " + strconv.Itoa(player.Room) + "\n"
+		case "s":
+			_, ok := world[player.Room].Exits[2]
+			if ok {
+				_, ok = world[world[player.Room].Exits[2].Destination]
+				if ok {
+					player.Room = world[player.Room].Exits[2].Destination
+				} else {
+					ch <- "\n***Room not defined in world***\n\n"
+				}
+				ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n"
+			} else {
+				ch <- "You can't go that way\n"
+			}
 		case "w":
-			if world[player.Room].Exits[West] != 0 {
-				player.Room = world[player.Room].Exits[West]
-				ch <- world[player.Room].Name + "\n"
+			_, ok := world[player.Room].Exits[3]
+			if ok {
+				_, ok = world[world[player.Room].Exits[3].Destination]
+				if ok {
+					player.Room = world[player.Room].Exits[3].Destination
+				} else {
+					ch <- "\n***Room not defined in world***\n\n"
+				}
+				ch <- world[player.Room].Name + "\n\n" + world[player.Room].Description + "\n"
 			} else {
-				ch <- "You can't go that way\n> "
+				ch <- "You can't go that way\n"
 			}
-//			player.Room--
-//			msg = "You are in room " + strconv.Itoa(player.Room) + "\n"
 		case "":
 			msg = "> "
 		default:
-			msg = "I don't understant that command\n> "
+			msg = "I don't understant that command\n"
 		}
 
-//		if strings.EqualFold(parts[0], "bye") {
-//			break
-//		}
-//
-//		messages <- who + ": " + input.Text()
+		//		if strings.EqualFold(parts[0], "bye") {
+		//			break
+		//		}
+		//
+		//		messages <- who + ": " + input.Text()
 		ch <- msg
 
 		if done {
@@ -183,20 +270,20 @@ func clientWriter(conn net.Conn, ch <-chan string) {
 //!-handleConn
 
 func readFile(path string) (string, error) {
-/*
-  file, err := os.Open(path)
-  if err != nil {
-    return nil, err
-  }
-  defer file.Close()
+	/*
+	   file, err := os.Open(path)
+	   if err != nil {
+	     return nil, err
+	   }
+	   defer file.Close()
 
-  var lines []string
-  scanner := bufio.NewScanner(file)
-  for scanner.Scan() {
-    lines = append(lines, scanner.Text())
-  }
-  return lines, scanner.Err()
-*/
+	   var lines []string
+	   scanner := bufio.NewScanner(file)
+	   for scanner.Scan() {
+	     lines = append(lines, scanner.Text())
+	   }
+	   return lines, scanner.Err()
+	*/
 	b, err := ioutil.ReadFile(path) // just pass the file name
 	if err != nil {
 		return "", err
@@ -208,42 +295,58 @@ func readFile(path string) (string, error) {
 }
 
 func buildWorld() (map[int]*Room, error) {
-	strWorld, err := readFile("./world.wld")
+	/*
+		strWorld, err := readFile("./world.wld")
 
-	if err != nil {
-		fmt.Println("Error loading world file: " + err.Error())
-		return nil, err
-	}
+		if err != nil {
+			fmt.Println("Error loading world file: " + err.Error())
+			return nil, err
+		}
 
-//	fmt.Println(strWorld)
+		//	fmt.Println(strWorld)
 
+		world := make(map[int]*Room)
+
+		rooms := strings.Split(strWorld, "#")
+		roomNum := 0
+		split := 0
+		tmp := ""
+
+		// Build room by room
+		for i := range rooms {
+			if i != 0 {
+				//fmt.Println(rooms[i])
+				split = strings.Index(rooms[i], "\n")
+				//fmt.Println(strconv.Itoa(split))
+				//tmp = rooms[i]
+				//fmt.Println(tmp[:split])
+				roomNum, err = strconv.Atoi(rooms[i][:split])
+				//fmt.Println(rooms[i][:split])
+				fmt.Println("Room number: " + strconv.Itoa(roomNum))
+				tmp = rooms[i][split+1:]
+				world[roomNum] = new(Room)
+				split = strings.Index(tmp, "~")
+				world[roomNum].Name = tmp[:split]
+				world[roomNum].Num = roomNum
+				tmp = tmp[split+1:]
+				split = strings.Index(tmp, "~")
+				world[roomNum].Description = tmp[:split]
+			}
+		}
+	*/
 	world := make(map[int]*Room)
 
-	rooms := strings.Split(strWorld, "#")
-	roomNum := 0
-	split := 0
-	tmp := ""
+	yamlFile, err := ioutil.ReadFile("./world.yaml")
 
-	// Build room by room
-	for i := range rooms {
-		if i != 0 {
-			//fmt.Println(rooms[i])
-			split = strings.Index(rooms[i], "\n")
-			//fmt.Println(strconv.Itoa(split))
-			//tmp = rooms[i]
-			//fmt.Println(tmp[:split])
-			roomNum, err = strconv.Atoi(rooms[i][:split])
-			//fmt.Println(rooms[i][:split])
-			fmt.Println("Room number: " + strconv.Itoa(roomNum))
-			tmp = rooms[i][split+1:]
-			world[roomNum] = new(Room)
-			split = strings.Index(tmp, "~")
-			world[roomNum].Name = tmp[:split]
-			world[roomNum].Num = roomNum
-			tmp = tmp[split+1:]
-			split = strings.Index(tmp, "~")
-			world[roomNum].Description = tmp[:split]
-		}
+	//n := bytes.Index(yamlFile, []byte{0})
+	//log.Printf(string(yamlFile[:n]))
+
+	if err != nil {
+		log.Printf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, world)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
 	}
 
 	return world, nil
@@ -260,20 +363,30 @@ func main() {
 		return
 	}
 
-//	world := make(map[int]*Room)
-//	world[1000] = new(Room)
-//	world[1000].Name = "The Temple of Midgaard"
-//	world[1000].Num = 1000
-//	world[1000].Exits[East] = 1001
-//	world[1001] = new(Room)
-//	world[1001].Name = "The Village Square"
-//	world[1001].Num = 1001
-//	world[1001].Exits[West] = 1000
+	//	world := make(map[int]*Room)
+	//	world[1000] = new(Room)
+	//	world[1000].Name = "The Temple of Midgaard"
+	//	world[1000].Num = 1000
+	//	world[1000].Exits[East] = 1001
+	//	world[1001] = new(Room)
+	//	world[1001].Name = "The Village Square"
+	//	world[1001].Num = 1001
+	//	world[1001].Exits[West] = 1000
 
 	fmt.Println("World has been built (" + strconv.Itoa(len(world)) + " rooms)")
 
+	fmt.Println(world)
+
+	for k, v := range world {
+		fmt.Printf("key[%s] value[%s]\n", k, v)
+
+		for k2, v2 := range v.Exits {
+			fmt.Printf("   key[%s] value[%s]\n", k2, v2)
+		}
+	}
+
 	// Open the socket
-	listener, err := net.Listen("tcp", "localhost:8000")
+	listener, err := net.Listen("tcp", ":8000")
 	if err != nil {
 		log.Fatal(err)
 	}
