@@ -41,6 +41,7 @@ type Room struct {
 	Description string        `json:"description"`
 	Flags       string        `json:"flags"`
 	Exits       map[int]*Exit `json:"exits"`
+	Players     map[string]*Character
 }
 
 var (
@@ -96,6 +97,7 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 	player.Name = username
 	player.Room = 3001
 	player.RemoteAddr = who
+	//world[player.Room].Players[player.Name] = &player
 
 	ch <- "Welcome back " + player.Name + " (password: " + password + ")\n\n"
 	//	entering <- &player
@@ -196,7 +198,9 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 			if ok {
 				_, ok = world[world[player.Room].Exits[1].Destination]
 				if ok {
+					//					delete(world[player.Room].Players, player.Name)
 					player.Room = world[player.Room].Exits[1].Destination
+					//					world[player.Room].Players[player.Name] = &player
 				} else {
 					ch <- "\n***Room not defined in world***\n\n"
 				}
@@ -222,7 +226,9 @@ func handleConn(conn net.Conn, world map[int]*Room) {
 			if ok {
 				_, ok = world[world[player.Room].Exits[3].Destination]
 				if ok {
+					//					delete(world[player.Room].Players, player.Name)
 					player.Room = world[player.Room].Exits[3].Destination
+					//					world[player.Room].Players[player.Name] = &player
 				} else {
 					ch <- "\n***Room not defined in world***\n\n"
 				}
@@ -385,6 +391,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Printf("Listening on: " + listener.Addr().String())
 
 	// Start the Game Loop
 	go gameloop()
